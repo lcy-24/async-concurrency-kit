@@ -1,4 +1,4 @@
-# async-concurrency
+# async-concurrency-kit
 
 异步工具库：**并发控制、重试、超时、防抖节流**，零依赖、全 TypeScript。把前端最常用的几个异步能力收在一个库里，也是面试手写题的「标准答案」合集。
 
@@ -13,13 +13,13 @@
 ## 安装
 
 ```bash
-npm install async-concurrency
+npm install async-concurrency-kit
 ```
 
 ## 快速开始
 
 ```ts
-import { pLimit, pMap, retry, timeout, debounce, throttle } from 'async-concurrency'
+import { pLimit, pMap, retry, timeout, debounce, throttle } from 'async-concurrency-kit'
 
 // 1. 并发控制：批量上传限制同时最多 3 个
 const limit = pLimit(3)

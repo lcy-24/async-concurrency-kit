@@ -1,5 +1,5 @@
 {
-  "name": "async-concurrency",
+  "name": "async-concurrency-kit",
   "version": "1.0.0",
   "description": "异步工具库：并发控制(pLimit/pMap/pAll)、指数退避重试、超时、防抖节流，零依赖、全 TypeScript",
   "type": "module",
@@ -38,7 +38,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/lcy-24/async-concurrency.git"
+    "url": "git+https://github.com/lcy-24/async-concurrency-kit.git"
   },
   "devDependencies": {
     "tsup": "^8.3.5",
