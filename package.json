@@ -1,6 +1,6 @@
 {
   "name": "async-concurrency-kit",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "异步工具库：并发控制(pLimit/pMap/pAll)、指数退避重试、超时、防抖节流，零依赖、全 TypeScript",
   "type": "module",
   "files": [
