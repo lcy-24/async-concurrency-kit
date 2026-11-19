@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>async-concurrency-kit · 异步并发控制/防抖节流/重试</title>
+  <script type="importmap">
+  {
+    "imports": {
+      "async-concurrency-kit": "https://cdn.jsdelivr.net/npm/async-concurrency-kit@1.0.0/dist/index.js"
+    }
+  }
+  </script>
+  <style>
+    :root { --bg:#f7f8fa; --card:#fff; --border:#e5e7eb; --text:#1f2329; --muted:#6b7280;
+      --accent:#3b82f6; --green:#10b981; --amber:#f59e0b; --code-bg:#f3f4f6; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+      background:var(--bg); color:var(--text); padding:24px; }
+    .wrap { max-width:960px; margin:0 auto; }
+    h1 { font-size:22px; margin:0 0 4px; }
+    .sub { color:var(--muted); font-size:14px; margin-bottom:24px; }
+    .sub code { background:var(--code-bg); padding:2px 6px; border-radius:4px; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px;
+      padding:20px; margin-bottom:20px; }
+    .card h2 { font-size:16px; margin:0 0 12px; }
+    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:12px; }
+    button { border:1px solid var(--border); background:#fff; color:var(--text);
+      padding:8px 14px; border-radius:8px; cursor:pointer; font-size:13px; }
+    button:hover { border-color:var(--accent); color:var(--accent); }
+    button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+    button.primary:hover { opacity:.9; }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+    .bar { height:20px; background:var(--code-bg); border-radius:10px; overflow:hidden; position:relative; }
+    .bar > i { display:block; height:100%; background:linear-gradient(90deg,#3b82f6,#8b5cf6);
+      width:0; transition:width .2s; }
+    .bar span { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+      font-size:12px; color:#fff; }
+    .tasks { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
+    .task { width:34px; height:34px; border-radius:8px; display:flex; align-items:center;
+      justify-content:center; font-size:11px; border:1px solid var(--border); background:#fff; }
+    .task.running { background:#dbeafe; border-color:#3b82f6; color:#1d4ed8; }
+    .task.done { background:#d1fae5; border-color:#10b981; color:#065f46; }
+    .task.failed { background:#fee2e2; border-color:#ef4444; color:#991b1b; }
+    input[type=text] { padding:8px 12px; border:1px solid var(--border); border-radius:8px;
+      font-size:13px; width:280px; }
+    .stat { font-size:13px; color:var(--muted); }
+    .stat b { color:var(--text); }
+    .log { background:#0f172a; color:#d1d5db; border-radius:10px; padding:14px;
+      font-family:"SF Mono",Menlo,Consolas,monospace; font-size:12px; height:200px;
+      overflow-y:auto; line-height:1.7; }
+    .log .t { color:#64748b; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>async-concurrency-kit</h1>
+    <p class="sub">并发控制 · 指数退避重试 · 超时 · 防抖节流。安装：<code>npm i async-concurrency-kit</code></p>
+
+    <!-- 并发控制 -->
+    <div class="card">
+      <h2>① pLimit(3)：12 个任务，同时最多 3 个并发</h2>
+      <div class="row">
+        <button class="primary" id="btnStart" onclick="runConcurrency()">开始执行</button>
+        <span class="stat">活跃并发：<b id="activeCount">0</b> / 3 &nbsp;·&nbsp; 已完成：<b id="doneCount">0</b> / 12</span>
+      </div>
+      <div class="bar"><i id="progressBar"></i><span id="progressText">0%</span></div>
+      <div class="tasks" id="taskGrid"></div>
+    </div>
+
+    <!-- 防抖节流 -->
+    <div class="card">
+      <h2>② debounce / throttle：触发次数 vs 实际执行次数</h2>
+      <div class="row">
+        <input type="text" id="searchInput" placeholder="输入触发 debounce（停止 300ms 才执行）" />
+        <span class="stat">触发 <b id="debTrig">0</b> 次 · 执行 <b id="debExec">0</b> 次</span>
+      </div>
+      <div class="row">
+        <button id="btnThrottle">疯狂点击（throttle 100ms）</button>
+        <span class="stat">点击 <b id="thrTrig">0</b> 次 · 执行 <b id="thrExec">0</b> 次</span>
+      </div>
+    </div>
+
+    <!-- 重试 -->
+    <div class="card">
+      <h2>③ retry：失败 2 次后成功，指数退避</h2>
+      <div class="row">
+        <button class="primary" id="btnRetry" onclick="runRetry()">发起请求（模拟前 2 次失败）</button>
+      </div>
+      <div class="log" id="retryLog"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { pLimit, debounce, throttle, retry, sleep } from 'async-concurrency-kit'
+
+    // ---- ① 并发控制 ----
+    const taskGrid = document.getElementById('taskGrid')
+    const activeEl = document.getElementById('activeCount')
+    const doneEl = document.getElementById('doneCount')
+    const bar = document.getElementById('progressBar')
+    const barText = document.getElementById('progressText')
+    const btnStart = document.getElementById('btnStart')
+
+    window.runConcurrency = async () => {
+      btnStart.disabled = true
+      taskGrid.innerHTML = ''
+      for (let i = 0; i < 12; i++) {
+        const d = document.createElement('div')
+        d.className = 'task'; d.id = 'task-' + i; d.textContent = i + 1
+        taskGrid.appendChild(d)
+      }
+      let done = 0, active = 0
+      const limit = pLimit(3)
+      const update = () => {
+        activeEl.textContent = active; doneEl.textContent = done
+        bar.style.width = (done / 12 * 100) + '%'; barText.textContent = Math.round(done / 12 * 100) + '%'
+      }
+      await Promise.all(Array.from({ length: 12 }, (_, i) => limit(async () => {
+        active++
+        const el = document.getElementById('task-' + i); el.classList.add('running')
+        update()
+        await sleep(300 + Math.random() * 700) // 模拟耗时任务
+        active--
+        done++
+        el.classList.remove('running'); el.classList.add('done')
+        update()
+      })))
+      btnStart.disabled = false
+    }
+
+    // ---- ② 防抖 / 节流 ----
+    const debTrig = document.getElementById('debTrig')
+    const debExec = document.getElementById('debExec')
+    let dTrig = 0, dExec = 0
+    const onSearch = debounce(() => { debExec.textContent = ++dExec }, 300)
+    document.getElementById('searchInput').addEventListener('input', () => {
+      debTrig.textContent = ++dTrig; onSearch()
+    })
+
+    const thrTrig = document.getElementById('thrTrig')
+    const thrExec = document.getElementById('thrExec')
+    let tTrig = 0, tExec = 0
+    const onThrottle = throttle(() => { thrExec.textContent = ++tExec }, 100)
+    document.getElementById('btnThrottle').addEventListener('click', () => {
+      thrTrig.textContent = ++tTrig; onThrottle()
+    })
+
+    // ---- ③ 重试 ----
+    const retryLog = document.getElementById('retryLog')
+    function rlog(msg) {
+      const line = document.createElement('div')
+      const t = new Date().toLocaleTimeString('zh-CN', { hour12: false })
+      line.innerHTML = `<span class="t">${t}</span>  ${msg}`
+      retryLog.appendChild(line); retryLog.scrollTop = retryLog.scrollHeight
+    }
+    let attempt = 0
+    window.runRetry = async () => {
+      retryLog.innerHTML = ''; attempt = 0
+      const result = await retry(
+        async () => {
+          attempt++
+          rlog(`第 ${attempt} 次尝试...`)
+          if (attempt < 3) throw new Error('网络抖动，请求失败')
+          return '请求成功'
+        },
+        { retries: 3, delay: 500, backoff: 2, onRetry: (err, n) => rlog(`  ↳ 失败（${err.message}），${n * 500}ms 后重试`) }
+      )
+      rlog('✅ ' + result)
+    }
+  </script>
+</body>
+</html>
