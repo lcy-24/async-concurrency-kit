@@ -5,7 +5,7 @@
 ## 特性
 
 - 🔀 **并发控制**：`pLimit` / `pMap` / `pAll`，限制同时执行的异步任务数
-- 🔁 **指数退避重试**：`retry`，失败自动重试，延迟按倍数递增
+- 🔁 **指数退避重试**：`retry`，失败自动重试，延迟按倍数递增，默认排除 4xx
 - ⏱ **超时**：`timeout`，给任意 Promise 加超时
 - 🛑 **防抖节流**：`debounce` / `throttle`，支持 leading/trailing、cancel、flush
 - ✅ 零依赖、全 TS，Node 和浏览器通用
@@ -55,7 +55,7 @@ const onScroll = throttle(() => handleScroll(), 100)
 
 | 函数 | 说明 |
 | --- | --- |
-| `retry(fn, options?)` | 指数退避重试，`retries/delay/backoff/maxDelay/shouldRetry/onRetry` |
+| `retry(fn, options?)` | 指数退避重试，`retries/delay/backoff/maxDelay/shouldRetry/onRetry`；默认排除 4xx（客户端错误），网络错误 / 5xx / 普通异常才重试 |
 | `timeout(promise, ms, message?)` | 超时抛错 |
 | `sleep(ms)` | 暂停 |
 

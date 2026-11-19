@@ -33,10 +33,27 @@ export interface RetryOptions {
   backoff?: number
   /** 单次延迟上限（毫秒），默认无上限 */
   maxDelay?: number
-  /** 判断某次错误是否值得重试，默认全部重试 */
+  /** 判断某次错误是否值得重试。默认排除 4xx（客户端错误），网络错误 / 5xx / 普通异常才重试 */
   shouldRetry?: (error: unknown, attempt: number) => boolean
   /** 每次重试前的回调 */
   onRetry?: (error: unknown, attempt: number, delayMs: number) => void
+}
+
+/** 从错误对象提取 HTTP 状态码（兼容 axios 的 response.status 和 fetch 的 status） */
+function getErrorStatus(error: unknown): number | undefined {
+  if (error && typeof error === 'object') {
+    const e = error as { status?: unknown; response?: { status?: unknown } }
+    if (typeof e.status === 'number') return e.status
+    if (e.response && typeof e.response.status === 'number') return e.response.status
+  }
+  return undefined
+}
+
+/** 默认重试策略：4xx（客户端错误）不重试，网络错误 / 5xx / 普通异常才重试 */
+function defaultShouldRetry(error: unknown): boolean {
+  const status = getErrorStatus(error)
+  if (status === undefined) return true
+  return status < 400 || status >= 500
 }
 
 /**
@@ -51,7 +68,7 @@ export async function retry<T>(
     delay = 300,
     backoff = 2,
     maxDelay = Infinity,
-    shouldRetry = () => true,
+    shouldRetry = defaultShouldRetry,
     onRetry,
   } = options
 
