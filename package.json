@@ -1,0 +1,47 @@
+{
+  "name": "async-concurrency",
+  "version": "1.0.0",
+  "description": "异步工具库：并发控制(pLimit/pMap/pAll)、指数退避重试、超时、防抖节流，零依赖、全 TypeScript",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "async",
+    "concurrency",
+    "promise",
+    "pool",
+    "retry",
+    "timeout",
+    "debounce",
+    "throttle",
+    "p-limit",
+    "typescript"
+  ],
+  "author": "jackiechan",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lcy-24/async-concurrency.git"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.5",
+    "typescript": "^5.6.3"
+  }
+}
